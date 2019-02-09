@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -45,11 +46,9 @@ public class ProductController {
     }
 
     @GetMapping(value = "/homework", produces = APPLICATION_JSON_VALUE)
-    public ResponseEntity homework() {
+    public ResponseEntity homework() throws ExecutionException, InterruptedException {
 
-
-
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body(productService.homework(5,20));
     }
 
 }

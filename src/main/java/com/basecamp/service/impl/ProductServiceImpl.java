@@ -5,19 +5,17 @@ import com.basecamp.exception.InvalidDataException;
 import com.basecamp.service.ProductService;
 import com.basecamp.wire.GetHandleProductIdsResponse;
 import com.basecamp.wire.GetProductInfoResponse;
+import com.basecamp.wire.ThreadInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
+
+import static java.lang.Thread.currentThread;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +63,49 @@ public class ProductServiceImpl implements ProductService {
         log.info("Product executor stopped.");
     }
 
+
+    @Override
+    public TreeSet<ThreadInfo> homework(int countOfThread, int finish) throws InterruptedException, ExecutionException {
+
+        ExecutorService executorService = Executors.newFixedThreadPool(countOfThread);
+
+        Callable<ThreadInfo> callable = () -> {
+            String name;
+            int i = 0;
+            long start = System.nanoTime();
+            while (i < finish) {
+                try {
+                    Thread.sleep(1000);
+                    i += (int) (Math.random() * 5);
+                    System.out.println("'" + currentThread().getName() + "' on - " + i);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            long duration = System.nanoTime() - start;
+            name = currentThread().getName();
+            return ThreadInfo.builder().name(name).duration(duration).finished(System.nanoTime()).build();
+        };
+
+
+        List<Callable<ThreadInfo>> callables = new ArrayList<>();
+        for (int i = 0; i < countOfThread; i++) {
+            callables.add(callable);
+        }
+        List<Future<ThreadInfo>> futures = executorService.invokeAll(callables);
+
+//      Sorted by duration(loop working)
+//      As a result there can be the difference between the representation in console and TreeSet
+        TreeSet<ThreadInfo> threadInfos = new TreeSet<>();
+        for (Future<ThreadInfo> future : futures) {
+            threadInfos.add(future.get());
+        }
+
+        executorService.shutdown();
+        return threadInfos;
+    }
+
+
     private void validateId(String id) {
 
         if (StringUtils.isEmpty(id)) {
@@ -85,6 +126,7 @@ public class ProductServiceImpl implements ProductService {
             throw new InternalException(e.getMessage());
         }
     }
+
 
     private GetProductInfoResponse callToDbAnotherServiceETC(String productId) {
         return GetProductInfoResponse.builder()
